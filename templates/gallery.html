@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-4">Image Gallery</h1>
+<p>Below is a list of uploaded image sets, categorized by houses. Click on any house to view the images and manage them.</p>
+<div class="list-group">
+    {% for house in houses %}
+    <a href="{{ url_for('house', house_name=house) }}" class="list-group-item list-group-item-action">
+        {{ house }}
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

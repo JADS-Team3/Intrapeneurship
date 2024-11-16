@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center">
+    <h1>Welcome to Prism</h1>
+    <h3><b>P</b>riority <b>R</b>eduction of <b>I</b>mages for <b>S</b>mart <b>M</b>anagement</h3>
+    <p class="lead">Manage and optimize your drone images. Upload photos and automaticaly filter unnecessary images effortlessly.</p>
+    <img src="{{ url_for('static', filename='drone.jpg') }}" alt="Drone" class="img-fluid my-4" style="max-height: 300px;">
+    <div>
+        <a href="/upload" class="btn btn-primary btn-lg">Convert Images</a>
+        <a href="/gallery" class="btn btn-secondary btn-lg">View Gallery</a>
+    </div>
+</div>
+{% endblock %}
