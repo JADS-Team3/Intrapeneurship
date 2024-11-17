@@ -1,12 +1,18 @@
 {% extends "base.html" %}
+
 {% block content %}
 <h1 class="mb-4">Upload Drone Images</h1>
 <p>Upload images from your drone for analysis. The system will help identify and discard unnecessary ones to save time and resources.</p>
 <p>Please only upload image(s) of 1 house or entity at a time.</p>
 <form method="post" enctype="multipart/form-data">
     <div class="mb-3">
+        <label for="clusters" class="form-label">Number of Clusters</label>
+        <input type="number" name="clusters" id="clusters" class="form-control" min="1" value="5" required>
+        <div class="form-text">Specify the number of clusters to use for image grouping and filtering.</div>
+    </div>
+    <div class="mb-3">
         <label for="files" class="form-label">Select Images (You can upload multiple)</label>
-        <input type="file" name="files[]" id="files" multiple class="form-control">
+        <input type="file" name="files" id="files" multiple class="form-control">
     </div>
     <button type="submit" class="btn btn-success">Upload</button>
 </form>
