@@ -1,0 +1,52 @@
+/* Global styling */
+body {
+    background-color: #e8f4fc; /* Light blue background */
+    color: #333; /* Dark text for contrast */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensure footer stays at bottom */
+}
+
+.navbar {
+    background-color: #007bff; /* Blue navbar */
+}
+
+.navbar-brand, .nav-link {
+    color: #ffffff !important; /* White text on navbar */
+}
+
+.navbar-brand:hover, .nav-link:hover {
+    color: #d4e3ff !important; /* Lighter blue on hover */
+}
+
+footer {
+    background-color: #007bff; /* Blue footer */
+    color: white;
+    padding: 20px;
+    text-align: center;
+    position: sticky; /* Stuck at the bottom */
+    bottom: 0;
+    width: 100%;
+    margin-top: auto; /* Push footer to the bottom */
+}
+
+h1, h2, h3 {
+    color: #0056b3; /* Darker blue for headers */
+}
+
+a {
+    color: #0056b3; /* Blue links */
+}
+
+a:hover {
+    color: #003c7a; /* Even darker blue on hover */
+}
+
+.btn-primary {
+    background-color: #007bff; /* Bright blue buttons */
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3; /* Darker blue buttons on hover */
+}

@@ -1,19 +1,205 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="mb-4">Upload Drone Images</h1>
-<p>Upload images from your drone for analysis. The system will help identify and discard unnecessary ones to save time and resources.</p>
-<p>Please only upload image(s) of 1 house or entity at a time.</p>
+<nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);"
+    aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="../">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="upload">New Cluster</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">Create new Cluster</h1>
+<p>Upload images from your drone for analysis. The system will help identify and discard unnecessary ones to save time
+    and resources.</p>
+
+<div id="loadingSpinner" class="spinner-border" role="status"
+    style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;">
+    <span class="visually-hidden">Loading...</span>
+</div>
+<div id="progressContainer"
+    style="display: none; position: fixed; top: 60%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;">
+    <div class="progress" style="width: 300px;">
+        <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0"
+            aria-valuemin="0" aria-valuemax="100">0%</div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function setLoading(isLoading) {
+            const spinner = document.getElementById('loadingSpinner');
+            spinner.style.display = isLoading ? 'block' : 'none';
+            spinner.style.display = isLoading ? 'block' : 'none';
+            progressContainer.style.display = isLoading ? 'block' : 'none';
+        }
+
+        function updateProgress(percent) {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percent + '%';
+            progressBar.setAttribute('aria-valuenow', percent);
+            progressBar.textContent = percent + '%';
+        }
+
+        document.querySelector('form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+
+            xhr.upload.addEventListener('progress', function (event) {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    updateProgress(percentComplete);
+                }
+            });
+
+            xhr.addEventListener('load', function () {
+                setLoading(false);
+                if (xhr.status === 200) {
+                    alert('Upload successful');
+                    const response = JSON.parse(xhr.responseText);
+                    console.log(response);
+                    document.getElementById('exampleModalLabel').textContent = 'Upload Successful - ' + response.files + ' Images';
+                    document.getElementById('clusterCount').textContent = response.clusters;
+                    document.getElementById('clusters').value = response.clusters;
+                    document.getElementById('modalTitle').value = response.title;
+                    document.getElementById('modalDescription').value = response.description;
+                    document.getElementById('modalMethod').value = response.method;
+                    const modal = new bootstrap.Modal(document.getElementById('exampleModal'));
+                    modal.show();
+                } else {
+                    alert('Upload failed');
+                }
+            });
+
+            xhr.addEventListener('error', function () {
+                setLoading(false);
+                alert('Upload failed');
+            });
+
+            setLoading(true);
+            xhr.send(formData);
+        });
+
+        document.getElementById('createClusters').addEventListener('click', function (event) {
+            event.preventDefault();
+            sendPrismRequest();
+        });
+
+        function sendPrismRequest() {
+            setLoading(true);  // Show the loading spinner
+
+            const clusters = document.getElementById('clusters').value;
+            const title = document.getElementById('modalTitle').value;
+            const description = document.getElementById('modalDescription').value;
+            const method = document.getElementById('modalMethod').value;
+
+            const data = {
+                clusters: clusters,
+                title: title,
+                description: description,
+                method: method
+            };
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/prism', true);
+            xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    setLoading(false);  // Hide the loading spinner
+                    if (xhr.status === 200) {
+                        alert('Prism request successful');
+                        console.log(JSON.parse(xhr.responseText));
+                    } else {
+                        alert('Prism request failed');
+                    }
+                }
+            };
+
+            xhr.send(JSON.stringify(data));
+        }
+    });
+</script>
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="exampleModalLabel">Upload Successful</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                The recommended amount of Clusters is <span id="clusterCount"></span>. Do you want to proceed with this amount?
+            </div>
+            <div id="form">
+                <div class="mb-3">
+                    <label for="clusters" class="col-form-label">Change the number of recommended clusters manually: </label>
+                    <input type="number" class="form-control" id="clusters" name="clusters" value="">
+                </div>
+                <input type="hidden" name="title" id="modalTitle" value="">
+                <input type="hidden" name="description" id="modalDescription" value="">
+                <input type="hidden" name="method" id="modalMethod" value="">
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="createClusters">Calculate Clusters</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <form method="post" enctype="multipart/form-data">
-    <div class="mb-3">
-        <label for="clusters" class="form-label">Number of Clusters</label>
-        <input type="number" name="clusters" id="clusters" class="form-control" min="1" value="5" required>
-        <div class="form-text">Specify the number of clusters to use for image grouping and filtering.</div>
+    <div class="row px-5 gy-4 my-5">
+        <div class="metadata row my-4">
+            <div class="col-4">
+                <label for="title" class="form-label">Cluster Title</label>
+                <input class="form-control form-control-lg" type="text" name="title" placeholder="Title"
+                    aria-label="title">
+            </div>
+            <div class="col-8 align-self-end">
+                <label for="description" class="form-label">Description</label>
+                <input class="form-control" type="text" name="description" placeholder="Description"
+                    aria-label="description">
+            </div>
+        </div>
+        <div class="method my-4">
+            <label for="method" class="form-label">Select Clustering Method</label>
+            <div class="row justify-content-md-center px-5">
+                <div class="col align-self-center form-check form-check-inline">
+                    <input type="radio" class="form-check-input" name="method" id="quality" value="quality"
+                        autocomplete="off" checked>
+                    <label class="form-check-label" for="quality">Image Quality</label>
+                </div>
+                <div class="col align-self-center form-check form-check-inline">
+                    <input type="radio" class="form-check-input" name="method" id="medoids" value="medoids"
+                        autocomplete="off">
+                    <label class="form-check-label" for="medoids">Medoids</label>
+                </div>
+                <div class="col align-self-center form-check form-check-inline">
+                    <input type="radio" class="form-check-input" name="method" id="centroids" value="centroids"
+                        autocomplete="off">
+                    <label class="form-check-label" for="centroids">Centroids</label>
+                </div>
+            </div>
+        </div>
+        <div class="my-4">
+            <label for="files" class="form-label">Select Images (You can upload multiple)</label>
+            <input type="file" name="files" id="files" multiple class="form-control" onchange="toggleSubmitButton()">
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-success" id="submitBtn" disabled>Upload</button>
+        </div>
     </div>
-    <div class="mb-3">
-        <label for="files" class="form-label">Select Images (You can upload multiple)</label>
-        <input type="file" name="files" id="files" multiple class="form-control">
-    </div>
-    <button type="submit" class="btn btn-success">Upload</button>
 </form>
+
+<script>
+    function toggleSubmitButton() {
+        const submitBtn = document.getElementById('submitBtn');
+        const filesInput = document.getElementById('files');
+        submitBtn.disabled = filesInput.files.length === 0;
+    }
+</script>
 {% endblock %}

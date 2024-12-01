@@ -1,12 +1,28 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, jsonify
 import os
+import time  # Import time module for delay
 import numpy as np
-from werkzeug.utils import secure_filename
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.preprocessing import image
+from werkzeug.utils import secure_filename
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
-import PIL
+from sklearn.metrics import silhouette_score
+from scipy.spatial.distance import cdist
+import cv2
+from kneed import KneeLocator  # Ensure you have installed kneed via pip
+from sklearn_extra.cluster import KMedoids
+import random
+from mpl_toolkits.mplot3d import Axes3D  # For 3D plotting
+import math
+import matplotlib.image as mpimg
+import prism_script as prism
+import matplotlib.image as mpimg
+import math
 
 # Flask app configuration
 app = Flask(__name__)
@@ -23,76 +39,6 @@ model = ResNet50(weights='imagenet', include_top=False, pooling='avg')
 # Allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-# Function to load and preprocess an image
-def load_and_preprocess(img_path):
-    try:
-        print(f"Loading image: {img_path}")  # Debugging log
-        img = image.load_img(img_path, target_size=(224, 224))  # Resize to ResNet50 input size
-        x = image.img_to_array(img)
-        x = np.expand_dims(x, axis=0)  # Add batch dimension
-        x = preprocess_input(x)  # Apply ResNet50 preprocessing
-        return x
-    except Exception as e:
-        print(f"Error loading image {img_path}: {e}")  # Debugging log
-        return None
-
-# Extract features from images
-def extract_features(image_folder):
-    features = []
-    img_paths = []
-    for img_name in os.listdir(image_folder):
-        img_path = os.path.join(image_folder, img_name)
-        print(f"Processing image: {img_path}")  # Debugging log
-        img = load_and_preprocess(img_path)
-        if img is not None:
-            try:
-                feature = model.predict(img)
-                features.append(feature.flatten())
-                img_paths.append(img_path)
-            except Exception as e:
-                print(f"Error extracting features from {img_path}: {e}")  # Debugging log
-    print(f"Features extracted: {len(features)} images processed.")  # Summary log
-    return np.array(features), img_paths
-
-
-# Normalize features
-def normalize_features(features):
-    scaler = StandardScaler()
-    return scaler.fit_transform(features)
-
-# Perform KMeans clustering
-def kmeans_clustering(features, n_clusters):
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    kmeans.fit(features)
-    return kmeans.labels_
-
-# Process uploaded images with KMeans
-def process_images_with_kmeans(house_folder, n_clusters):
-    # Extract features from images
-    features, img_paths = extract_features(house_folder)
-    
-    if len(features) == 0:
-        print('no features')
-        return  # No images to process
-
-    # Normalize features
-    features_normalized = normalize_features(features)
-
-    # Perform clustering
-    labels = kmeans_clustering(features_normalized, n_clusters=n_clusters)
-    print(labels)
-    # Keep one representative image per cluster
-    cluster_representatives = {}
-    for label, img_path in zip(labels, img_paths):
-        if label not in cluster_representatives:
-            cluster_representatives[label] = img_path  # First image in the cluster
-
-    # Remove unnecessary images
-    for img_path in img_paths:
-        if img_path not in cluster_representatives.values():
-            print("removes"+img_path)
-            os.remove(img_path)
 
 # Helper function to get the next house name
 def get_next_house_name():
@@ -112,13 +58,16 @@ def upload():
     if request.method == 'POST':
         files = request.files.getlist('files')
         if not files:
-            return "No files uploaded", 400
-
-        # Get the number of clusters from the form
-        n_clusters = int(request.form.get('clusters', 5))  # Default to 5 if not provided
+            return jsonify({"error": "No files uploaded"}), 400
+        
+        method = request.form.get("method") if request.form.get("method") is not None else "Not specified"
+        description = request.form.get("description") if request.form.get("description") is not None else "No description provided"
+        title = request.form.get("title") if request.form.get("title") is not None else f"House {len(os.listdir(app.config['UPLOAD_FOLDER'])) + 1}"
+        if title == "":
+            title = f"House {len(os.listdir(app.config['UPLOAD_FOLDER'])) + 1}"
 
         # Create a folder for this upload
-        house_id = f"House {len(os.listdir(app.config['UPLOAD_FOLDER'])) + 1}"
+        house_id = f"{title}"
         house_folder = os.path.join(app.config['UPLOAD_FOLDER'], house_id)
         os.makedirs(house_folder, exist_ok=True)
 
@@ -128,13 +77,34 @@ def upload():
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(house_folder, filename))
 
-        # Process images using KMeans to remove unnecessary ones
-        process_images_with_kmeans(house_folder, n_clusters=n_clusters)
+        clusters = 0
+        return jsonify({
+            "files": len(files),
+            "method": method,
+            "description": description,
+            "title": title,
+            "clusters": clusters
+            }), 200
+    return render_template('upload.html', loading=False)
 
-        return redirect(url_for('gallery'))
+# Prism page
+@app.route('/prism', methods=['POST'])
+def prism():
+    data = request.get_json()
+    clusters = data.get('clusters')
+    title = data.get('title')
+    description = data.get('description')
+    method = data.get('method')
 
-    return render_template('upload.html')
-
+    # Dummy response for testing
+    response = {
+        "message": "Prism request received",
+        "clusters": clusters,
+        "title": title,
+        "description": description,
+        "method": method
+    }
+    return jsonify(response), 200
 
 # Gallery page
 @app.route('/gallery')
