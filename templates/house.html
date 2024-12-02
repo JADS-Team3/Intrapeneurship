@@ -10,7 +10,7 @@
 </nav>
 <h1>{{ house_name }}</h1>
 <p>{{ description }}</p>
-<p>This set contains <strong>{{ num_images }}</strong> images in {{ clusters }} clusters (method= {{ method }}), with a total size of <strong>{{ total_size_mb|round(2) }} MB</strong>.</p>
+<p>This set contains <strong>{{ num_images }}</strong> images in {{ clusters }} clusters (used method {{ method }}), with a total size of {{ total_size_mb|round(2) }} MB reduced to {{ (total_size_mb / num_images)|round(2) }} MB per image. Reduction of <strong>{{ (100 - ((total_size_mb / num_images) / total_size_mb) * 100)|round(2) }}%</strong></p>
 
 <!-- Modal -->
 <div class="modal modal-xl fade" id="clusterImagesModal" tabindex="-1" aria-labelledby="clusterImagesModalLabel" aria-hidden="true">
@@ -33,7 +33,7 @@
         <div class="card" data-cluster="{{ cluster }}" data-image-path="/{{ images[0] }}">
             <img src="/{{ images[0] }}" class="card-img-top" alt="Image">
             <div class="card-body">
-                <h5 class="card-title">Cluster: {{ cluster }}</h5>
+                <h5 class="card-title">Total {{ images|length }} images</h5>
             </div>
         </div>
     </div>

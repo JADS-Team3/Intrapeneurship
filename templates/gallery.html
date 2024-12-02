@@ -1,8 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
+<nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);"
+    aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="../">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="gallery">Gallery</li>
+    </ol>
+</nav>
+
 <h1 class="mb-4">Image Gallery</h1>
-<p>Below is a list of uploaded image sets, categorized by houses. Click on any house to view the images and manage them.</p>
-<div class="list-group">
+<p>Below is a list of uploaded image sets, categorized by houses. Click on any house to view the images and manage them.
+</p>
+<div class="container row">
+    {% for house, image_path in data.items() %}
+    <div class="card col-3 pe-0 ps-0 m-3">
+        <img src="{{ image_path }}" class="card-img-top" alt="{{ house }}">
+        <div class="card-body">
+            <h5 class="card-title">{{ house }}</h5> 
+            <div class="row justify-content-md-around text-end mt-4">
+                <div class="col-5">
+                    <a href="#" class="btn btn-secondary">Share</a>
+                </div>
+                <div class="col-6 offset-1">
+                    <a href="./gallery/{{ house }}" class="btn btn-primary">View Images</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- <div class="list-group">
     {% for house in houses %}
     {{houses}}
     <a href="{{ url_for('house', house_name=house) }}" class="list-group-item list-group-item-action">
@@ -10,4 +38,4 @@
     </a>
     {% endfor %}
 </div>
-{% endblock %}
+{% endblock %} -->

@@ -225,7 +225,20 @@ def prism():
 @app.route('/gallery')
 def gallery():
     houses = os.listdir(UPLOAD_FOLDER)
-    return render_template('gallery.html', houses=houses)
+
+    # Check if inside each house folder there is a prism.json file, if not remove the house from the list
+    houses = [house for house in houses if os.path.exists(os.path.join(UPLOAD_FOLDER, house, 'prism.json'))]
+    
+    data = {}
+    # Load the PRISM results for each house
+    for house_name in houses:
+        with open(os.path.join(UPLOAD_FOLDER, house_name, 'prism.json')) as f:
+            prism_results = json.load(f)
+            representative_image = prism_results['cluster_dict']['0'][0]
+            data[house_name] = representative_image
+
+
+    return render_template('gallery.html', data=data)
 
 # House details page
 @app.route('/gallery/<house_name>')
@@ -255,6 +268,10 @@ def house(house_name):
         os.path.getsize(os.path.join(house_folder, img)) for img in os.listdir(house_folder) if allowed_file(img)
     )
     total_size_mb = total_size_bytes / (1024 * 1024)  # Convert bytes to MB
+
+    # Sort the values of cluster_dict new. The element with the most images in the cluster will be the first
+    cluster_dict = {k: v for k, v in sorted(cluster_dict.items(), key=lambda item: len(item[1]), reverse=True)}
+
 
     return render_template(
         'house.html',
