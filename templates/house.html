@@ -1,16 +1,88 @@
 {% extends "base.html" %}
 {% block content %}
+<nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%236c757d'/%3E%3C/svg%3E&#34;);"
+    aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="../">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('gallery') }}">Gallery</a></li>
+        <li class="breadcrumb-item active" aria-current="upload">{{ house_name }}</li>
+    </ol>
+</nav>
 <h1>{{ house_name }}</h1>
-<p>Below are the drone images for <strong>{{ house_name }}</strong>. This set contains <strong>{{ num_images }}</strong> image(s), with a total size of <strong>{{ total_size_mb|round(2) }} MB</strong>.</p>
+<p>{{ description }}</p>
+<p>This set contains <strong>{{ num_images }}</strong> images in {{ clusters }} clusters (method= {{ method }}), with a total size of <strong>{{ total_size_mb|round(2) }} MB</strong>.</p>
+
+<!-- Modal -->
+<div class="modal modal-xl fade" id="clusterImagesModal" tabindex="-1" aria-labelledby="clusterImagesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clusterImagesModalLabel">Image Path</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body ">
+                <!-- Images will be displayed here -->
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row">
-    {% for image in images %}
+    {% for cluster, images in cluster_dict.items() %}
     <div class="col-md-3 mb-3">
-        <div class="card">
-            <img src="{{ url_for('static', filename=image) }}" class="card-img-top" alt="Image">
+        <div class="card" data-cluster="{{ cluster }}" data-image-path="/{{ images[0] }}">
+            <img src="/{{ images[0] }}" class="card-img-top" alt="Image">
+            <div class="card-body">
+                <h5 class="card-title">Cluster: {{ cluster }}</h5>
+            </div>
         </div>
     </div>
     {% endfor %}
 </div>
-<a href="{{ url_for('gallery') }}" class="btn btn-secondary mt-3">Back to Gallery</a>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    const modal = new bootstrap.Modal(document.getElementById('clusterImagesModal'));
+    const modalHeader = document.getElementById('clusterImagesModalLabel');
+    const modalBody = document.querySelector('.modal-body');
+    
+    cards.forEach(card => {
+        card.addEventListener('click', function() {
+            const cluster = card.getAttribute('data-cluster');
+            const imagePath = card.getAttribute('data-image-path');
+            modalHeader.textContent = `Cluster: ${cluster}`;
+            modalBody.innerHTML = '';
+
+            // Get all images for the clicked cluster
+            const images = {{ cluster_dict|tojson }};
+            const clusterImages = images[cluster];
+
+            // Append each image to the modal body
+            clusterImages.forEach((image, index) => {
+                const imgElement = document.createElement('img');
+                imgElement.src = `/${image}`;
+                imgElement.style.maxWidth = '200px';
+                imgElement.classList.add('img-fluid', 'm-2');
+                
+                if (index === 0) {
+                    const firstRow = document.createElement('div');
+                    firstRow.classList.add('row');
+                    const firstCol = document.createElement('div');
+                    firstCol.classList.add('col-12', 'row', 'justify-content-md-center');
+                    imgElement.style.maxWidth = '400px';
+                    firstCol.appendChild(imgElement);
+                    firstRow.appendChild(firstCol);
+                    modalBody.appendChild(firstRow);
+                } else {
+                    modalBody.appendChild(imgElement);
+                }
+            });
+
+            modal.show();
+        });
+    });
+});
+</script>
+
 {% endblock %}

@@ -76,6 +76,8 @@ def extract_features(image_folder):
     - list: List of image paths.
     - list: List of quality scores corresponding to each image.
     """
+    model = ResNet50(weights='imagenet', include_top=False, pooling='avg')
+
     features = []
     img_paths = []
     quality_scores = []
@@ -364,6 +366,7 @@ def find_optimal_clusters_combined(features, min_clusters=2, max_clusters=30, si
     for k in K:
         kmeans = KMeans(n_clusters=k, random_state=42)
         labels = kmeans.fit_predict(features)
+        print(labels.shape, features.shape)
         wcss.append(kmeans.inertia_)
         score = silhouette_score(features, labels)
         silhouette_scores.append(score)
@@ -558,7 +561,7 @@ def main():
     )
     plot_clusters(reduced_features, labels, title='Clusters Visualization with PCA', dimensionality=plot_dimension)
     
-    # Step 6: Select and print representative images based on the chosen method
+    # Step 6: Select representative images based on the chosen method
     if selection_method == 'laplacian':
         clusters, cluster_images_dict = select_representative_images_laplacian(
             labels, img_paths, quality_scores

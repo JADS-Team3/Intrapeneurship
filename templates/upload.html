@@ -14,7 +14,7 @@
     and resources.</p>
 
 <div id="loadingSpinner" class="spinner-border" role="status"
-    style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;">
+    style="display: none; position: fixed; top: 50%; left: 50%; z-index: 1000;">
     <span class="visually-hidden">Loading...</span>
 </div>
 <div id="progressContainer"
@@ -57,7 +57,6 @@
             xhr.addEventListener('load', function () {
                 setLoading(false);
                 if (xhr.status === 200) {
-                    alert('Upload successful');
                     const response = JSON.parse(xhr.responseText);
                     console.log(response);
                     document.getElementById('exampleModalLabel').textContent = 'Upload Successful - ' + response.files + ' Images';
@@ -110,8 +109,9 @@
                 if (xhr.readyState === 4) {
                     setLoading(false);  // Hide the loading spinner
                     if (xhr.status === 200) {
-                        alert('Prism request successful');
                         console.log(JSON.parse(xhr.responseText));
+                        house_name = JSON.parse(xhr.responseText).title;
+                        window.location.href = '/gallery/' + house_name;
                     } else {
                         alert('Prism request failed');
                     }
@@ -134,7 +134,7 @@
             <div class="modal-body">
                 The recommended amount of Clusters is <span id="clusterCount"></span>. Do you want to proceed with this amount?
             </div>
-            <div id="form">
+            <div id="form" class="px-4">
                 <div class="mb-3">
                     <label for="clusters" class="col-form-label">Change the number of recommended clusters manually: </label>
                     <input type="number" class="form-control" id="clusters" name="clusters" value="">
@@ -169,17 +169,17 @@
             <label for="method" class="form-label">Select Clustering Method</label>
             <div class="row justify-content-md-center px-5">
                 <div class="col align-self-center form-check form-check-inline">
-                    <input type="radio" class="form-check-input" name="method" id="quality" value="quality"
+                    <input type="radio" class="form-check-input" name="method" id="quality" value="laplacian"
                         autocomplete="off" checked>
                     <label class="form-check-label" for="quality">Image Quality</label>
                 </div>
                 <div class="col align-self-center form-check form-check-inline">
-                    <input type="radio" class="form-check-input" name="method" id="medoids" value="medoids"
+                    <input type="radio" class="form-check-input" name="method" id="medoids" value="medoid"
                         autocomplete="off">
                     <label class="form-check-label" for="medoids">Medoids</label>
                 </div>
                 <div class="col align-self-center form-check form-check-inline">
-                    <input type="radio" class="form-check-input" name="method" id="centroids" value="centroids"
+                    <input type="radio" class="form-check-input" name="method" id="centroid" value="centroid"
                         autocomplete="off">
                     <label class="form-check-label" for="centroids">Centroids</label>
                 </div>

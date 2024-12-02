@@ -14,13 +14,24 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from scipy.spatial.distance import cdist
 import cv2
+import json
 from kneed import KneeLocator  # Ensure you have installed kneed via pip
 from sklearn_extra.cluster import KMedoids
 import random
 from mpl_toolkits.mplot3d import Axes3D  # For 3D plotting
 import math
 import matplotlib.image as mpimg
-import prism_script as prism
+from prism_script import (
+    extract_features as prism_extract_features,
+    normalize_features as prism_normalize_features,
+    find_optimal_clusters_combined as prism_find_optimal_clusters_combined,
+    kmedoids_clustering as prism_kmedoids_clustering,
+    kmeans_clustering as prism_kmeans_clustering,
+    select_representative_images_laplacian as prism_select_representative_images_laplacian,
+    select_representative_images_centroid as prism_select_representative_images_centroid,
+    select_representative_images_medoid as prism_select_representative_images_medoid
+)
+
 import matplotlib.image as mpimg
 import math
 
@@ -47,6 +58,93 @@ def get_next_house_name():
     next_number = max(house_numbers, default=0) + 1
     return f"House {next_number}"
 
+def calculate_recommended_clusters(image_folder):
+    """Calculate the recommended number of clusters for a given house
+        # Step 1: Extract features and compute quality scores
+        # Step 2: Normalize features
+        # Step 3: Find the optimal number of clusters using combined method
+        Returns:
+            clusters: Recommended number of clusters"""
+
+    # Step 1: Extract features and compute quality scores
+    features, img_paths, quality_scores = prism_extract_features(image_folder)
+    print(f"Extracted features shape: {features.shape}")
+    print(f"Number of images processed: {len(img_paths)}")
+
+    if len(features) == 0:
+        IndexError("No images were processed. Please check the image folder path and contents.")
+    # Step 2: Normalize features
+    features_normalized = prism_normalize_features(features)
+    
+
+    # Step 3: Find the optimal number of clusters using combined method
+    # Step 3: Find the optimal number of clusters using combined method
+    optimal_k, silhouette_scores, wcss = prism_find_optimal_clusters_combined(
+        features_normalized, min_clusters=2, max_clusters=len(img_paths) - 1, silhouette_threshold=0.001
+    )
+    return optimal_k
+
+def calculate_clusters(image_folder, selection_method, clusters):
+    """Calculate the recommended number of clusters for a given house
+        # Step 3: Cluster images using the appropriate clustering algorithm
+        # Step 4: Select and print representative images based on the chosen method
+        Returns:
+            dict: image names for each cluster"""
+
+    # Step 1: Extract features and compute quality scores
+    features, img_paths, quality_scores = prism_extract_features(image_folder)
+
+    if len(features) == 0:
+        IndexError("No images were processed. Please check the image folder path and contents.")
+
+    # Step 2: Normalize features
+    features_normalized = prism_normalize_features(features)
+
+    # Step 3: Cluster images using the appropriate clustering algorithm
+    if selection_method == 'medoid':
+        kmedoids = prism_kmedoids_clustering(features_normalized, n_clusters=clusters)
+        labels = kmedoids.labels_
+        centroids = kmedoids.cluster_centers_
+    else:
+        kmeans = prism_kmeans_clustering(features_normalized, n_clusters=clusters)
+        labels = kmeans.labels_
+        centroids = kmeans.cluster_centers_
+        
+    # Step 4: Select representative images based on the chosen method
+    if selection_method == 'laplacian':
+        representative_img, cluster_images_dict = prism_select_representative_images_laplacian(
+            labels, img_paths, quality_scores
+        )
+    elif selection_method == 'centroid':
+        representative_img, cluster_images_dict = prism_select_representative_images_centroid(
+            labels, img_paths, features_normalized, centroids
+        )
+    elif selection_method == 'medoid':
+        representative_img, cluster_images_dict = prism_select_representative_images_medoid(
+            kmedoids, img_paths
+        )
+    else:
+        IndexError("Invalid selection method selected.")
+
+    # Step 5: Change the order of the cluster_images_dict, for each cluster the first image is the representative image
+    representative_img = [v for k, v in representative_img.items()]
+    print("Representative images:", representative_img)
+    print("Cluster images dict:", cluster_images_dict)
+    # Change the order of the keys inside the cluster_images_dict
+    new_cluster_images_dict = {}
+
+    for i, (cluster, images) in enumerate(cluster_images_dict.items()):
+        if i < len(representative_img):
+            rep_img = representative_img[i]
+            if rep_img in images:
+                images.remove(rep_img)
+            images.insert(0, rep_img)
+        new_cluster_images_dict[cluster] = images
+
+    print("Cluster images dict:", cluster_images_dict)    
+    
+    
+    return cluster_images_dict
 # Main page
 @app.route('/')
 def index():
@@ -55,6 +153,10 @@ def index():
 # Upload page
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
+    """Upload a new house with images and metadata
+        Returns:
+            metadata (len(files), method, description, title, clusters)
+            clusters: Number of recommended clusters"""
     if request.method == 'POST':
         files = request.files.getlist('files')
         if not files:
@@ -77,7 +179,7 @@ def upload():
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(house_folder, filename))
 
-        clusters = 0
+        clusters = calculate_recommended_clusters(house_folder)
         return jsonify({
             "files": len(files),
             "method": method,
@@ -87,23 +189,36 @@ def upload():
             }), 200
     return render_template('upload.html', loading=False)
 
+
 # Prism page
 @app.route('/prism', methods=['POST'])
 def prism():
+    """"Receive a request to run PRISM on a set of images
+        Returns:
+            clusters: Number of recommended clusters
+            title: Title of the house
+            description: Description of the house
+            method: Method used for clustering"""
     data = request.get_json()
-    clusters = data.get('clusters')
+    clusters = int(data.get('clusters'))
     title = data.get('title')
+    house_id = f"{title}"
+    house_folder = os.path.join(app.config['UPLOAD_FOLDER'], house_id)
     description = data.get('description')
     method = data.get('method')
+    cluster_dict = calculate_clusters(house_folder, method, clusters)
 
-    # Dummy response for testing
     response = {
-        "message": "Prism request received",
         "clusters": clusters,
         "title": title,
         "description": description,
-        "method": method
+        "method": method,
+        "cluster_dict": {str(k): v for k, v in cluster_dict.items()}
     }
+
+    # Create new json file inside the house folder with the response
+    with open(os.path.join(house_folder, 'prism.json'), 'w') as f:
+        f.write(json.dumps(response, indent=4))
     return jsonify(response), 200
 
 # Gallery page
@@ -116,8 +231,23 @@ def gallery():
 @app.route('/gallery/<house_name>')
 def house(house_name):
     house_folder = os.path.join(app.config['UPLOAD_FOLDER'], house_name)
+
+    # Check if the house exists
     if not os.path.exists(house_folder):
         return "House not found", 404
+    
+    # Make sure PRISM has been run on this house
+    if not os.path.exists(os.path.join(house_folder, 'prism.json')):
+        return "PRISM not run on this house yet", 404
+
+    # Load the PRISM results
+    with open(os.path.join(house_folder, 'prism.json')) as f:
+        prism_results = json.load(f)
+        house_name = prism_results['title']
+        description = prism_results['description']
+        method = prism_results['method']
+        clusters = prism_results['clusters']
+        cluster_dict = prism_results['cluster_dict']
 
     images = [f"uploads/{house_name}/{img}" for img in os.listdir(house_folder) if allowed_file(img)]
     num_images = len(images)
@@ -129,7 +259,10 @@ def house(house_name):
     return render_template(
         'house.html',
         house_name=house_name,
-        images=images,
+        description=description,
+        clusters=clusters,
+        cluster_dict=cluster_dict,
+        method=method,
         num_images=num_images,
         total_size_mb=total_size_mb
     )
